@@ -10,11 +10,11 @@ Config::INI::MVP::Reader - multi-value capable .ini file reader (for plugins)
 
 =head1 VERSION
 
-version 0.016
+version 0.017
 
 =cut
 
-our $VERSION = '0.016';
+our $VERSION = '0.017';
 
 =head1 DESCRIPTION
 
@@ -85,6 +85,8 @@ sub multivalue_args { }
 
 sub starting_section { q{_} }
 
+sub _expand_package { $_[1] }
+
 sub change_section {
   my ($self, $section) = @_;
 
@@ -93,6 +95,8 @@ sub change_section {
   
   Carp::croak qq{couldn't understand section header: "$section"}
     unless $package;
+
+  $package = $self->_expand_package($package);
 
   # Consider using Params::Util to validate class name.  -- rjbs, 2007-05-11
   Carp::croak "invalid package name '$package' in configuration"
@@ -114,8 +118,8 @@ sub change_section {
   eval "require $package; 1"
     or Carp::croak "couldn't load plugin $section given in config: $@";
 
-  if ($section->can('multivalue_args')) {
-    $self->{__PACKAGE__}{mva}{$package} = [ $section->multivalue_args ];
+  if ($package->can('multivalue_args')) {
+    $self->{__PACKAGE__}{mva}{$package} = [ $package->multivalue_args ];
   } else {
     $self->{__PACKAGE__}{mva}{$package} = [ ];
   }
@@ -127,7 +131,9 @@ sub set_value {
   my $sec_name = $self->current_section;
   my $section = $self->{__PACKAGE__}{plugin}{ $sec_name } ||= {};
 
-  my $mva = $self->{__PACKAGE__}{mva}{ $sec_name };
+  my $mva = $sec_name eq $self->starting_section
+          ? $self->{__PACKAGE__}{mva}{ $sec_name}
+          : $self->{__PACKAGE__}{mva}{ $section->{'=package'} };
 
   if (grep { $_ eq $name } @$mva) {
     $section->{$name} ||= [];
