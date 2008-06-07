@@ -16,4 +16,4 @@ no_index:
     - t
 requires:
   Config::INI::Reader: 0
-version: 0.017
+version: 0.018
